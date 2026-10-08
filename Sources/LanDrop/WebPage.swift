@@ -1,5 +1,6 @@
 enum WebPage {
-    // Página que se abre desde la otra compu. Se refresca sola cada 2 segundos.
+    // Página que se abre desde la otra compu. Chequea cada 2 segundos si hay novedades,
+    // pero nunca cambia la vista sola: muestra un aviso y se actualiza con un click.
     static let html = #"""
     <!doctype html>
     <html lang="es">
@@ -32,15 +33,27 @@ enum WebPage {
              font-size:13px; font-weight:600; cursor:pointer; text-decoration:none; white-space:nowrap; }
       .btn:hover { filter:brightness(1.1); }
       .empty { text-align:center; color:var(--muted); padding:80px 0; }
+      .ghost { border:1px solid var(--border); background:var(--card); color:var(--text); width:34px; height:34px;
+               border-radius:50%; font-size:16px; cursor:pointer; }
+      .ghost:hover { border-color:var(--accent); }
+      .banner { display:flex; align-items:center; justify-content:space-between; gap:12px; margin-bottom:16px;
+                padding:10px 12px 10px 16px; border-radius:14px; background:var(--accent); color:#fff; font-weight:600;
+                animation:in .25s ease-out; }
+      .banner[hidden] { display:none; }
+      .banner .btn { background:#fff; color:var(--accent); }
     </style>
     </head>
     <body>
     <main>
-      <header><span class="dot" id="status"></span><h1>Monti Mac2Win</h1><span class="count" id="count"></span></header>
+      <header><span class="dot" id="status"></span><h1>Monti Mac2Win</h1><span class="count" id="count"></span>
+        <button class="ghost" id="refresh-button" onclick="refresh()" title="Actualizar">↻</button></header>
+      <div class="banner" id="banner" hidden><span>Hay novedades en la Mac</span>
+        <button class="btn" id="banner-refresh-button" onclick="refresh()">Actualizar</button></div>
       <div id="list"></div>
     </main>
     <script>
-      let last = null;
+      let shown = null;   // lo que está en pantalla
+      let latest = null;  // lo último que respondió la Mac
       const fmt = b => { const u = ["B","KB","MB","GB"]; let i = 0; while (b >= 1024 && i < u.length - 1) { b /= 1024; i++; } return (i ? b.toFixed(1) : b) + " " + u[i]; };
       const esc = s => s.replace(/[&<>"']/g, c => ({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]));
 
@@ -51,22 +64,29 @@ enum WebPage {
         <div class="body"><pre id="t-${it.id}">${esc(it.text)}</pre></div>
         <button class="btn" id="copy-${it.id}" onclick="copyText('${it.id}', this)">Copiar</button></div>`;
 
-      async function load() {
+      // Solo consulta: si hay algo distinto a lo que se ve, muestra el aviso.
+      async function check() {
         const status = document.getElementById("status");
         try {
           const res = await fetch("/api/items", { cache: "no-store" });
-          const raw = await res.text();
+          latest = await res.text();
           status.style.background = "#30d158";
-          if (raw === last) return;
-          last = raw;
-          const items = JSON.parse(raw);
-          document.getElementById("count").textContent = items.length ? items.length + (items.length === 1 ? " ítem" : " ítems") : "";
-          document.getElementById("list").innerHTML = items.length
-            ? items.map(it => it.kind === "file" ? fileRow(it) : textRow(it)).join("")
-            : `<div class="empty">Todavía no hay nada.<br>Arrastrá archivos o escribí un texto en la Mac.</div>`;
+          document.getElementById("banner").hidden = latest === shown;
         } catch (e) {
           status.style.background = "#ff453a";
         }
+      }
+
+      async function refresh() {
+        await check();
+        if (latest === null) return;
+        shown = latest;
+        document.getElementById("banner").hidden = true;
+        const items = JSON.parse(shown);
+        document.getElementById("count").textContent = items.length ? items.length + (items.length === 1 ? " ítem" : " ítems") : "";
+        document.getElementById("list").innerHTML = items.length
+          ? items.map(it => it.kind === "file" ? fileRow(it) : textRow(it)).join("")
+          : `<div class="empty">Todavía no hay nada.<br>Arrastrá archivos o escribí un texto en la Mac.</div>`;
       }
 
       // navigator.clipboard no funciona en http (no seguro), por eso el textarea.
@@ -81,8 +101,8 @@ enum WebPage {
         setTimeout(() => btn.textContent = "Copiar", 1500);
       }
 
-      load();
-      setInterval(load, 2000);
+      refresh();
+      setInterval(check, 2000);
     </script>
     </body>
     </html>
