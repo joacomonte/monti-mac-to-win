@@ -2,6 +2,17 @@
 
 Pasá archivos y textos de tu **Mac** a tu **Windows** (o cualquier compu) por la red de tu casa. Sin cables, sin pendrive, sin subir nada a internet.
 
+<table>
+  <tr>
+    <th>En la Mac</th>
+    <th>En la Windows (navegador)</th>
+  </tr>
+  <tr>
+    <td valign="top"><img src="docs/mac.png" alt="Panel de Monti Mac2Win en la barra de menú de la Mac" width="300"></td>
+    <td valign="top"><img src="docs/windows.png" alt="Página para descargar los archivos desde Windows" width="520"></td>
+  </tr>
+</table>
+
 ## ¿Cómo funciona?
 
 1. En la Mac, arrastrás archivos (o escribís un texto) en el ícono ⇅ de la barra de arriba.
